@@ -1,15 +1,8 @@
-//
-//  File.swift
-//  
-//
-//  Created by Thomas Ricouard on 09/07/2020.
-//
-
 import Foundation
 
-public struct ListingResponse: Decodable {
+public struct ListingResponse<T: Decodable>: Decodable {
     public let kind: String?
-    public let data: ListingData?
+    public let data: ListingData<T>?
     public let errorMessage: String?
     
     public init(error: String) {
@@ -19,102 +12,74 @@ public struct ListingResponse: Decodable {
     }
 }
 
-public struct ListingData: Decodable {
+public struct ListingData<T: Decodable>: Decodable {
     public let modhash: String?
-    public let dist: Int
-    public let children: [ListingHolder]
+    public let dist: Int?
+    public let after: String?
+    public let before: String?
+    public let children: [ListingHolder<T>]
 }
 
-public struct ListingHolder: Decodable {
+public struct ListingHolder<T: Decodable>: Decodable {
     public let kind: String
-    public let data: Listing
-}
-
-public struct Listing: Decodable, Identifiable {
-    public let id: String
-    public let title: String
-    public let numComments: Int
-    public let subreddit: String
-    public let thumbnail: String
-    public let created: Date
-    public let createdUtc: Date
-    public var thumbnailURL: URL? {
-        guard thumbnail.hasPrefix("http"),
-              let url = URL(string: thumbnail) else {
-            return nil
-        }
-        return url
-    }
-    public let author: String
-    public let selftext: String?
-    public let description: String?
-    public let ups: Int
-    public let downs: Int
-    public let secureMedia: SecureMedia?
-    public let url: String?
-    public let permalink: String?
-    public var redditURL: URL? {
-        if let permalink = permalink, let url = URL(string: "https://reddit.com\(permalink)") {
-            return url
-        }
-        return nil
-    }
-    public let likes: Bool?
-}
-
-public struct SecureMedia: Decodable {
-    public let redditVideo: RedditVideo?
-    public let oembed: Oembed?
+    public let data: T
     
-    public var video: Video? {
-        if let video = redditVideo {
-            return Video(url: video.fallbackUrl, width: video.width, height: video.height)
-        } else if let oembed = oembed,
-                  let url = oembed.url,
-                  let width = oembed.width,
-                  let height = oembed.height {
-            return Video(url: url, width: width, height: height)
+    enum CodingKeys : CodingKey {
+        case kind, data
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        kind = try container.decode(String.self, forKey: .kind)
+        if T.self == GenericListingContent.self {
+            data = try GenericListingContent(from: decoder) as! T
+        } else {
+            data = try container.decode(T.self, forKey: .data)
         }
-        return nil
     }
 }
 
-public struct RedditVideo: Decodable {
-    public let fallbackUrl: URL
-    public let height: Int
-    public let width: Int
+public enum GenericListingContent: Decodable, Identifiable {
+    public var id: String {
+        switch self {
+        case let .post(post):
+            return post.id
+        case let .comment(comment):
+            return comment.id
+        default:
+            return UUID().uuidString
+        }
+    }
+    
+    public var post: SubredditPost? {
+        if case .post(let post) = self {
+            return post
+        }
+        return nil
+    }
+    
+    public var comment: Comment? {
+        if case .comment(let comment) = self {
+            return comment
+        }
+        return nil
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: ListingHolder<GenericListingContent>.CodingKeys.self)
+        let kind = try container.decode(String.self, forKey: .kind)
+        switch kind {
+        case "t1":
+            self = .comment(try container.decode(Comment.self, forKey: .data))
+        case "t3":
+            self = .post(try container.decode(SubredditPost.self, forKey: .data))
+        default:
+            self = .notSupported
+        }
+    }
+    
+    case post(SubredditPost)
+    case comment(Comment)
+    case notSupported
 }
 
-public struct Oembed: Decodable {
-    public let providerUrl: URL?
-    public let thumbnailUrl: URL?
-    public let url: URL?
-    public let width: Int?
-    public let height: Int?
-    public let thumbnailWidth: Int?
-    public let thumbnailHeight: Int?
-    public let type: String?
-}
-
-public struct Video {
-    public let url: URL
-    public let width: Int
-    public let height: Int
-}
-
-public let static_listing = Listing(id: "0",
-                                    title: "A very long title to be able to debug the UI correctly as it should be displayed on mutliple lines.",
-                                    numComments: 3400,
-                                    subreddit: "preview",
-                                    thumbnail: "self",
-                                    created: Date(),
-                                    createdUtc: Date(),
-                                    author: "test",
-                                    selftext: "A text",
-                                    description: "A description",
-                                    ups: 1000,
-                                    downs: 30,
-                                    secureMedia: nil,
-                                    url: "https://test.com",
-                                    permalink: nil,
-                                    likes: false)

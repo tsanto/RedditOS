@@ -8,8 +8,8 @@
 import SwiftUI
 import Backend
 
-struct SearchSubredditsPopover: View {
-    @EnvironmentObject private var userData: PersistedContent
+struct PopoverSearchSubredditView: View {
+    @EnvironmentObject private var userData: LocalDataStore
     @StateObject private var viewModel = SearchSubredditsViewModel()
     
     var body: some View {
@@ -21,10 +21,8 @@ struct SearchSubredditsPopover: View {
                 LoadingRow(text: nil)
             } else if let results = viewModel.results {
                 ForEach(results) { result in
-                    SubredditRow(subreddit: result).onTapGesture {
-                        if !userData.subreddits.contains(result) {
-                            userData.subreddits.append(result)
-                        }
+                    PopoverSearchSubredditRow(subreddit: result).onTapGesture {
+                        userData.add(favorite: result)
                     }
                 }
             }
@@ -42,6 +40,6 @@ struct SearchSubredditsPopover: View {
 
 struct SearchSheet_Previews: PreviewProvider {
     static var previews: some View {
-        SearchSubredditsPopover()
+        PopoverSearchSubredditView()
     }
 }

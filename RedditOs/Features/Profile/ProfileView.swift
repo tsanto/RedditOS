@@ -10,29 +10,24 @@ import Backend
 
 struct ProfileView: View {
     @EnvironmentObject private var oauthClient: OauthClient
-    @EnvironmentObject private var currentUser: CurrentUser
+    @EnvironmentObject private var currentUser: CurrentUserStore
     @Environment(\.openURL) private var openURL
+    
+    private let loadingPlaceholders = Array(repeating: static_listing, count: 10)
     
     var body: some View {
         NavigationView {
             List {
-                if let user = currentUser.user {
-                    HStack(spacing: 32) {
-                        Spacer()
-                        makeStatsView(number: user.commentKarma.toRoundedSuffixAsString(),
-                                      name: "Comment Karma")
-                        makeStatsView(number: user.linkKarma.toRoundedSuffixAsString(),
-                                      name: "Link Karma")
-                        Spacer()
-                    }.padding(.top, 16)
-                } else {
-                    authView
+                headerView.padding(.vertical, 16)
+                if currentUser.user != nil {
+                    userOverview
                 }
-            }
-            .listStyle(PlainListStyle())
-            .frame(width: 400)
+            }.listStyle(InsetListStyle())
+            
+            PostNoSelectionPlaceholder()
         }
-        .navigationTitle(currentUser.user?.name ?? "Login")
+        .navigationTitle("Profile")
+        .navigationSubtitle(currentUser.user?.name ?? "Login")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -45,35 +40,65 @@ struct ProfileView: View {
         }
     }
     
-    private func makeStatsView(number: String, name: String) -> some View {
-        VStack {
-            Text(number)
-                .font(.title)
-                .fontWeight(.bold)
-            Text(name)
-                .font(.subheadline)
-                .fontWeight(.bold)
-                .foregroundColor(.gray)
+    @ViewBuilder
+    private var headerView: some View {
+        if let user = currentUser.user {
+            UserHeaderView(user: user)
+                .onAppear {
+                    currentUser.fetchOverview()
+            }
+        } else {
+            authView
+        }
+    }
+    
+    @ViewBuilder
+    private var userOverview: some View {
+        if let overview = currentUser.overview {
+            ForEach(overview) { content in
+                switch content {
+                case let .post(post):
+                    SubredditPostRow(post: post, displayMode: .constant(.large))
+                case let .comment(comment):
+                    CommentRow(comment: comment)
+                default:
+                    Text("Unsupported view")
+                }
+            }
+            LoadingRow(text: "Loading next page")
+                .onAppear {
+                    currentUser.fetchOverview()
+                }
+        } else {
+            ForEach(loadingPlaceholders) { post in
+                SubredditPostRow(post: post,
+                                 displayMode: .constant(.large))
+                    .redacted(reason: .placeholder)
+            }
         }
     }
         
     @ViewBuilder
-    var authView: some View {
-        switch oauthClient.authState {
-        case .signedOut:
-            Button {
-                if let url = oauthClient.startOauthFlow() {
-                    openURL(url)
+    private var authView: some View {
+        HStack {
+            Spacer()
+            switch oauthClient.authState {
+            case .signedOut:
+                Button {
+                    if let url = oauthClient.startOauthFlow() {
+                        openURL(url)
+                    }
+                } label: {
+                    Text("Sign in")
                 }
-            } label: {
-                Text("Sign in")
+            case .signinInProgress:
+                ProgressView("Auth in progress")
+            case .authenthicated:
+                Text("Signed in")
+            case .unknown:
+                Text("Error")
             }
-        case .signinInProgress:
-            ProgressView("Auth in progress")
-        case .authenthicated:
-            Text("Signed in")
-        case .unknown:
-            Text("Error")
+            Spacer()
         }
     }
 }

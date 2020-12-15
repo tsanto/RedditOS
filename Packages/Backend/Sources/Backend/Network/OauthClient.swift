@@ -23,7 +23,9 @@ public class OauthClient: ObservableObject {
     // Oauth URL
     private let baseURL = "https://www.reddit.com/api/v1/authorize"
     private let secrets: [String: AnyObject]?
-    private let scopes = ["mysubreddits", "identity", "edit", "save", "vote", "subscribe", "read", "submit"]
+    private let scopes = ["mysubreddits", "identity", "edit", "save",
+                          "vote", "subscribe", "read", "submit", "history",
+                          "privatemessages"]
     private let state = UUID().uuidString
     private let redirectURI = "redditos://auth"
     private let duration = "permanent"
@@ -99,10 +101,10 @@ public class OauthClient: ObservableObject {
                 .receive(on: DispatchQueue.main)
                 .sink(receiveCompletion: { _ in },
                 receiveValue: { response in
-                    self.authState = .authenthicated(authToken: response.accessToken)
                     let keychain = Keychain(service: self.keychainService)
                     keychain[self.keychainAuthTokenKey] = response.accessToken
                     keychain[self.keychainAuthTokenRefreshToken] = response.refreshToken
+                    self.authState = .authenthicated(authToken: response.accessToken)
                 })
         }
     }
@@ -125,7 +127,7 @@ public class OauthClient: ObservableObject {
             })
     }
     
-    private func makeOauthPublisher(code: String) -> AnyPublisher<AuthTokenResponse, APIError>? {
+    private func makeOauthPublisher(code: String) -> AnyPublisher<AuthTokenResponse, NetworkError>? {
         let params: [String: String] = ["code": code,
                                         "grant_type": "authorization_code",
                                         "redirect_uri": redirectURI]
@@ -137,7 +139,7 @@ public class OauthClient: ObservableObject {
                                   params: params).eraseToAnyPublisher()
     }
     
-    private func makeRefreshOauthPublisher(refreshToken: String) -> AnyPublisher<AuthTokenResponse, APIError>? {
+    private func makeRefreshOauthPublisher(refreshToken: String) -> AnyPublisher<AuthTokenResponse, NetworkError>? {
         let params: [String: String] = ["grant_type": "refresh_token",
                                          "refresh_token": refreshToken]
         return API.shared.request(endpoint: .accessToken,

@@ -10,23 +10,18 @@ import SwiftUI
 import Combine
 import Backend
 
-class PostDetailViewModel: ObservableObject {
-    let listing: Listing
+class PostViewModel: ObservableObject {
+    let post: SubredditPost
     @Published var comments: [Comment]?
     
-    private var commentsPublisher: AnyPublisher<[CommentsRoot], Never>?
     private var commentsCancellable: AnyCancellable?
     
-    init(listing: Listing) {
-        self.listing = listing
+    init(post: SubredditPost) {
+        self.post = post
     }
     
     func fechComments() {
-        commentsPublisher = API.shared.request(endpoint: .comments(name: listing.subreddit, id: listing.id))
-            .subscribe(on: DispatchQueue.global())
-            .replaceError(with: [])
-            .eraseToAnyPublisher()
-        commentsCancellable = commentsPublisher?
+        commentsCancellable = Comment.fetch(subreddit: post.subreddit, id: post.id)
             .receive(on: DispatchQueue.main)
             .map{ $0.last?.comments }
             .sink{ [weak self] comments in

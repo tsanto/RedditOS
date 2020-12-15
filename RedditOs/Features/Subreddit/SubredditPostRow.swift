@@ -7,7 +7,6 @@
 
 import SwiftUI
 import Backend
-import SDWebImageSwiftUI
 
 struct SubredditPostRow: View {
     enum DisplayMode: String, CaseIterable {
@@ -21,72 +20,74 @@ struct SubredditPostRow: View {
         }
     }
     
-    let listing: Listing
-    let displayMode: DisplayMode
+    @StateObject var viewModel: PostViewModel
+    @Binding var displayMode: DisplayMode
     
     @Environment(\.openURL) private var openURL
-        
+    
+    init(post: SubredditPost, displayMode: Binding<DisplayMode>) {
+        _viewModel = StateObject(wrappedValue: PostViewModel(post: post))
+        _displayMode = displayMode
+    }
+    
     var body: some View {
-        NavigationLink(destination: PostDetail(listing: listing)) {
+        NavigationLink(destination: PostDetailView(viewModel: viewModel)) {
             HStack {
                 VStack(alignment: .leading) {
                     HStack(alignment: .top, spacing: 8) {
-                        ListingVoteView(listing: listing)
-                        
+                        PostVoteView(viewModel: viewModel)
                         if displayMode == .large {
-                            if let url = listing.thumbnailURL {
-                                WebImage(url: url)
-                                    .frame(width: 80, height: 60)
-                                    .aspectRatio(contentMode: .fit)
-                                    .cornerRadius(8)
-                            } else {
-                                ZStack(alignment: .center) {
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .frame(width: 80, height: 60)
-                                        .foregroundColor(Color.gray)
-                                    if listing.url != nil {
-                                        Image(systemName: "link")
-                                            .imageScale(.large)
-                                            .foregroundColor(.blue)
-                                    }
-                                }
-                            }
+                            SubredditPostThumbnailView(viewModel: viewModel)
                         }
                         
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(listing.title)
+                            Text(viewModel.post.title)
                                 .fontWeight(.bold)
-                                .font(.headline)
+                                .font(.body)
                                 .lineLimit(displayMode == .compact ? 2 : nil)
-                            if displayMode == .large,
-                               let urlString = listing.url,
-                               let url = URL(string: urlString) {
-                                Link(destination: url) {
-                                    Text(url.host ?? url.absoluteString)
+                                .foregroundColor(viewModel.post.visited ? .gray : nil)
+                            HStack {
+                                if let richText = viewModel.post.linkFlairRichtext, !richText.isEmpty {
+                                    FlairView(richText: richText,
+                                              textColorHex: viewModel.post.linkFlairTextColor,
+                                              backgroundColorHex: viewModel.post.linkFlairBackgroundColor,
+                                              display: .normal)
+                                }
+                                if (viewModel.post.selftext == nil || viewModel.post.selftext?.isEmpty == true),
+                                   displayMode == .large,
+                                   let urlString = viewModel.post.url,
+                                   let url = URL(string: urlString) {
+                                    Link(destination: url) {
+                                        Text(url.host ?? url.absoluteString)
+                                    }
                                 }
                             }
-                            ListingInfoView(listing: listing)
-                            HStack(spacing: 6) {
-                                Image(systemName: "bubble.middle.bottom.fill")
-                                    .imageScale(.small)
-                                Text("\(listing.numComments) comments")
-                            }
+                            PostInfoView(post: viewModel.post, display: .vertical)
                         }
                     }
                 }
                 Spacer()
             }
         }
-        .frame(width: 390)
+        .frame(width: 470)
         .padding(.vertical, 8)
         .contextMenu {
             Button {
-                if let url = listing.redditURL {
+                viewModel.postVote(vote: .upvote)
+            } label: { Text("Upvote") }
+            Button {
+                viewModel.postVote(vote: .downvote)
+            } label: { Text("Downvote") }
+            Button {
+                viewModel.toggleSave()
+            } label: { Text(viewModel.post.saved ? "Unsave": "Save") }
+            Button {
+                if let url = viewModel.post.redditURL {
                     openURL(url)
                 }
             } label: { Text("Open in browser") }
             Button {
-                if let url = listing.redditURL {
+                if let url = viewModel.post.redditURL {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(url.absoluteString, forType: .string)
                 }
@@ -98,16 +99,18 @@ struct SubredditPostRow: View {
 
 struct SubredditPostRow_Previews: PreviewProvider {
     static var previews: some View {
-        List {
-            SubredditPostRow(listing: static_listing, displayMode: .large)
-            SubredditPostRow(listing: static_listing, displayMode: .large)
-            SubredditPostRow(listing: static_listing, displayMode: .large)
-            
-            Divider()
-            
-            SubredditPostRow(listing: static_listing, displayMode: .compact)
-            SubredditPostRow(listing: static_listing, displayMode: .compact)
-            SubredditPostRow(listing: static_listing, displayMode: .compact)
+        NavigationView {
+            List {
+                SubredditPostRow(post: static_listing, displayMode: .constant(.large))
+                SubredditPostRow(post: static_listing, displayMode: .constant(.large))
+                SubredditPostRow(post: static_listing, displayMode: .constant(.large))
+                
+                Divider()
+                
+                SubredditPostRow(post: static_listing, displayMode: .constant(.compact))
+                SubredditPostRow(post: static_listing, displayMode: .constant(.compact))
+                SubredditPostRow(post: static_listing, displayMode: .constant(.compact))
+            }.frame(width: 500)
         }
     }
 }

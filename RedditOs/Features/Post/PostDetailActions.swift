@@ -8,14 +8,15 @@
 import SwiftUI
 import Backend
 
-struct PostDetailActions: View {
-    let listing: Listing
+struct PostDetailActionsView: View {
+    @ObservedObject var viewModel: PostViewModel
+    
     var body: some View {
         HStack(spacing: 16) {
             HStack(spacing: 6) {
                 Image(systemName: "bubble.middle.bottom.fill")
                     .imageScale(.small)
-                Text("\(listing.numComments) comments")
+                Text("\(viewModel.post.numComments) comments")
             }
             
             HStack(spacing: 6) {
@@ -25,9 +26,13 @@ struct PostDetailActions: View {
             }
             
             HStack(spacing: 6) {
-                Image(systemName: "bookmark")
-                    .imageScale(.small)
-                Text("Save")
+                Button(action: {
+                    viewModel.toggleSave()
+                }) {
+                    Image(systemName: viewModel.post.saved ? "bookmark.fill": "bookmark")
+                        .imageScale(.small)
+                    Text("Save")
+                }.buttonStyle(BorderlessButtonStyle())
             }
             
             HStack(spacing: 6) {
@@ -42,6 +47,6 @@ struct PostDetailActions: View {
 
 struct PostDetailActions_Previews: PreviewProvider {
     static var previews: some View {
-        PostDetailActions(listing: static_listing)
+        PostDetailActionsView(viewModel: PostViewModel(post: static_listing))
     }
 }

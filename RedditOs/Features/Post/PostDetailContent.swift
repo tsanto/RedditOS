@@ -8,10 +8,10 @@
 import SwiftUI
 import Backend
 import AVKit
-import SDWebImageSwiftUI
+import KingfisherSwiftUI
 
 struct PostDetailContent: View {
-    let listing: Listing
+    let listing: SubredditPost
     @Binding var redrawLink: Bool
     
     @ViewBuilder
@@ -23,24 +23,23 @@ struct PostDetailContent: View {
             HStack {
                 Spacer()
                 VideoPlayer(player: AVPlayer(url: video.url))
-                    .frame(width: CGFloat(video.width),
-                           height: CGFloat(video.height))
+                    .frame(width: min(500, CGFloat(video.width)),
+                           height: min(500, CGFloat(video.height)))
                 Spacer()
             }
         } else if let url = listing.url, let realURL = URL(string: url) {
             if realURL.pathExtension == "jpg" || realURL.pathExtension == "png" {
                 HStack {
                     Spacer()
-                    WebImage(url: realURL)
+                    KFImage(realURL)
                         .resizable()
-                        .indicator(.activity)
                         .aspectRatio(contentMode: .fit)
                         .background(Color.gray)
                         .frame(maxHeight: 400)
                         .padding()
                     Spacer()
                 }
-            } else {
+            } else if listing.selftext == nil || listing.selftext?.isEmpty == true {
                 LinkPresentationView(url: realURL, redraw: $redrawLink)
             }
         }

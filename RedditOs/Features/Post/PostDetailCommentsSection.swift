@@ -7,48 +7,28 @@
 
 import SwiftUI
 import Backend
+import UI
 
 struct PostDetailCommentsSection: View {
-    let comments: [Comment]?
+    @ObservedObject var viewModel: PostViewModel
+    private let placeholderComments = Array(repeating: static_comment, count: 10)
     
-    @ViewBuilder
     var body: some View {
-        if let comments = comments {
-            ForEach(comments) { comment in
-                makeRow(comment: comment)
+        Divider()
+        
+        Picker("Sort by", selection: $viewModel.commentsSort) {
+            ForEach(Comment.Sort.allCases, id: \.self) { sort in
+                Text(sort.label()).tag(sort)
             }
-        } else {
-            LoadingRow(text: "")
         }
-    }
-    
-    func makeRow(comment: Comment) -> some View {
-        VStack(alignment: .leading) {
-            HStack(spacing: 0) {
-                Text(comment.author ?? "Unknown")
-                    .font(.footnote)
-                if let score = comment.score {
-                    Text(" · \(score.toRoundedSuffixAsString()) points  · ")
-                        .foregroundColor(.gray)
-                        .font(.caption)
-                }
-                if let date = comment.createdUtc {
-                    Text(date, style: .relative)
-                        .foregroundColor(.gray)
-                        .font(.caption)
-                }
-            }
-            Text(comment.body ?? "No comment content")
-                .font(.body)
-            Divider()
-        }.padding(.vertical, 4)
-    }
-}
-
-struct PostCommentsSection_Previews: PreviewProvider {
-    static var previews: some View {
-        List {
-            PostDetailCommentsSection(comments: static_comments)
+        .pickerStyle(MenuPickerStyle())
+        .frame(width: 170)
+        .padding(.bottom, 8)
+        
+        RecursiveView(data: viewModel.comments ?? placeholderComments,
+                      children: \.repliesComments) { comment in
+            CommentRow(comment: comment)
+                .redacted(reason: viewModel.comments == nil ? .placeholder : [])
         }
     }
 }
