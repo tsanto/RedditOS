@@ -7,7 +7,7 @@
 
 import SwiftUI
 import Backend
-import KingfisherSwiftUI
+import Kingfisher
 
 struct SubredditPostThumbnailView: View {
     @ObservedObject var viewModel: PostViewModel
@@ -50,7 +50,7 @@ struct SubredditPostThumbnailView: View {
                     .transition(.move(edge: .top))
                     .animation(.interactiveSpring())
             }
-        }
+        }.padding(4)
     }
 }
 

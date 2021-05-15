@@ -8,7 +8,7 @@
 import SwiftUI
 import Backend
 import AVKit
-import KingfisherSwiftUI
+import Kingfisher
 
 struct PostDetailContent: View {
     let listing: SubredditPost
@@ -17,7 +17,9 @@ struct PostDetailContent: View {
     @ViewBuilder
     var body: some View {
         if let text = listing.selftext ?? listing.description {
-            Text(text).font(.body)
+            Text(text)
+                .font(.body)
+                .fixedSize(horizontal: false, vertical: true)
         }
         if let video = listing.secureMedia?.video {
             HStack {

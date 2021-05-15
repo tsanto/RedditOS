@@ -8,7 +8,12 @@
 import SwiftUI
 import Backend
 
-struct PostsListView: View {
+struct PostsListView: View, Equatable {
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.posts?.count == rhs.posts?.count &&
+            rhs.displayMode == lhs.displayMode
+    }
+    
     private let loadingPlaceholders = Array(repeating: static_listing, count: 10)
     let posts: [SubredditPost]?
     @Binding var displayMode: SubredditPostRow.DisplayMode
@@ -19,6 +24,7 @@ struct PostsListView: View {
             ForEach(posts ?? loadingPlaceholders) { post in
                 SubredditPostRow(post: post,
                                  displayMode: $displayMode)
+                    .equatable()
                     .redacted(reason: posts == nil ? .placeholder : [])
             }.animation(nil)
             if posts != nil {

@@ -7,14 +7,15 @@
 
 import SwiftUI
 import Backend
-import KingfisherSwiftUI
+import Kingfisher
 
 struct SidebarSubredditRow: View {
     let name: String
     let iconURL: String?
     
     var body: some View {
-        NavigationLink(destination: SubredditPostsListView(name: name)) {
+        NavigationLink(destination: SubredditPostsListView(name: name)
+                        .equatable()) {
             HStack {
                 if let image = iconURL,
                    let url = URL(string: image) {

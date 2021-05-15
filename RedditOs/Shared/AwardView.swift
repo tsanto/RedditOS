@@ -7,7 +7,7 @@
 
 import SwiftUI
 import Backend
-import KingfisherSwiftUI
+import Kingfisher
 
 struct AwardsView: View {
     let awards: [Award]
@@ -53,8 +53,8 @@ struct AwardsView: View {
 
 struct PostAwardsView_Previews: PreviewProvider {
     static var previews: some View {
-        AwardsView(awards: [static_award, static_award,
-                                static_award, static_award,
-                                static_award, static_award])
+        AwardsView(awards: [Award.default, Award.default,
+                            Award.default, Award.default,
+                            Award.default, Award.default])
     }
 }

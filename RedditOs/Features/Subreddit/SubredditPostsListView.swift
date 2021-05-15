@@ -8,11 +8,15 @@
 import SwiftUI
 import Backend
 import UI
-import KingfisherSwiftUI
+import Kingfisher
 
-struct SubredditPostsListView: View {
-    let posts = Array(repeating: 0, count: 20)
-    
+struct SubredditPostsListView: View, Equatable {
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.name == rhs.name && lhs.displayMode == rhs.displayMode
+    }
+        
+    private let name: String
+    private let isSheet: Bool
     private let loadingPlaceholders = Array(repeating: static_listing, count: 10)
     
     @EnvironmentObject private var uiState: UIState
@@ -23,7 +27,9 @@ struct SubredditPostsListView: View {
     
     @State private var subredditAboutPopoverShown = false
     
-    init(name: String) {
+    init(name: String, isSheet: Bool = false) {
+        self.name = name
+        self.isSheet = isSheet
         _viewModel = StateObject(wrappedValue: SubredditViewModel(name: name))
     }
     
@@ -42,73 +48,69 @@ struct SubredditPostsListView: View {
     }
     
     var body: some View {
-        NavigationView {
-            PostsListView(posts: viewModel.listings,
-                          displayMode: .constant(displayMode)) {
-                viewModel.fetchListings()
-            }.toolbar {
-                ToolbarItem(placement: .navigation) {
-                    Group {
-                        if isDefaultChannel {
-                            EmptyView()
-                        } else if let icon = viewModel.subreddit?.iconImg, let url = URL(string: icon) {
-                            KFImage(url)
-                                .resizable()
-                                .frame(width: 20, height: 20)
-                                .cornerRadius(10)
-                        } else {
-                            Image(systemName: "globe")
-                                .resizable()
-                                .frame(width: 20, height: 20)
-                        }
-                    }
-                    .onTapGesture {
-                        subredditAboutPopoverShown = true
-                    }
-                    .popover(isPresented: $subredditAboutPopoverShown,
-                             content: { SubredditAboutPopoverView(viewModel: viewModel) })
-                }
-                
-                ToolbarItem {
-                    Picker("",
-                           selection: $displayMode,
-                           content: {
-                            ForEach(SubredditPostRow.DisplayMode.allCases, id: \.self) { mode in
-                                Image(systemName: mode.iconName())
-                                    .tag(mode)
-                            }
-                           }).pickerStyle(InlinePickerStyle())
-                }
-                
-                ToolbarItem {
+        PostsListView(posts: viewModel.listings,
+                      displayMode: .constant(displayMode)) {
+            viewModel.fetchListings()
+        }
+        .equatable()
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Group {
                     if isDefaultChannel {
-                        Text("")
+                        EmptyView()
+                    } else if let icon = viewModel.subreddit?.iconImg, let url = URL(string: icon) {
+                        KFImage(url)
+                            .resizable()
+                            .frame(width: 20, height: 20)
+                            .cornerRadius(10)
                     } else {
-                        Picker(selection: $viewModel.sortOrder,
-                               label: Text("Sorting"),
-                               content: {
-                                ForEach(SubredditViewModel.SortOrder.allCases, id: \.self) { sort in
-                                    Text(sort.rawValue.capitalized).tag(sort)
-                                }
-                               })
+                        Image(systemName: "globe")
+                            .resizable()
+                            .frame(width: 20, height: 20)
                     }
+                }
+                .onTapGesture {
+                    subredditAboutPopoverShown = true
+                }
+                .popover(isPresented: $subredditAboutPopoverShown,
+                         content: { SubredditAboutPopoverView(viewModel: viewModel) })
+            }
+            
+            ToolbarItem {
+                Picker("Display layout", selection: $displayMode) {
+                    ForEach(SubredditPostRow.DisplayMode.allCases, id: \.self) { item in
+                        Image(systemName: item.symbol())
+                            .tag(item)
+                    }
+                }
+                .pickerStyle(InlinePickerStyle())
+                .help("Select display layout style")
+            }
+            
+            ToolbarItem {
+                if isDefaultChannel {
+                    Text("")
+                } else {
+                    Picker(selection: $viewModel.sortOrder,
+                           label: Text("Sorting"),
+                           content: {
+                            ForEach(SubredditViewModel.SortOrder.allCases, id: \.self) { sort in
+                                Text(sort.rawValue.capitalized).tag(sort)
+                            }
+                           })
                 }
             }
-            .onAppear(perform: viewModel.fetchListings)
-            
-            PostNoSelectionPlaceholder()
-                .toolbar {
-                    PostDetailToolbar(shareURL: viewModel.subreddit?.redditURL)
-                }
         }
         .navigationTitle(viewModel.name.capitalized)
         .navigationSubtitle(subtitle)
+        .frame(minHeight: 500)
         .onAppear {
             if !isDefaultChannel {
                 viewModel.fetchAbout()
             }
             uiState.selectedSubreddit = viewModel
         }
+        .onAppear(perform: viewModel.fetchListings)
     }
 }
 
@@ -117,3 +119,5 @@ struct Listing_Previews: PreviewProvider {
         SubredditPostsListView(name: "Best")
     }
 }
+
+
